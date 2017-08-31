@@ -1,0 +1,159 @@
+#!/bin/bash
+
+MAILTMP=`mktemp`
+BODYTMP=`mktemp`
+
+function cleanup {
+	test 1 == "$DEBUG" && echo "Cleanup."
+	test -f "$MAILTMP" && rm "$MAILTMP"
+	test -f "$BODYTMP" && rm "$BODYTMP"
+}
+trap cleanup EXIT
+
+do_help() {
+	while [ "$#" -gt 0 ]
+	do
+		echo "Error: $1">>/dev/stderr
+		shift
+	done
+
+	cat <<EOF >&2
+Syntax: mailtsv [-d] <--to addr> <--from addr> <--bcc addr> <--subject subj> <--bodytsv h f> <--bodyhtml str>
+
+Sends a mail with the specified arguments.
+
+The order of arguments beginning with "body" is preserved in the email
+
+Valid options:
+
+
+ -d --debug
+                Print debugging information
+
+ -t --to <addr>
+                Send to this address (may specify multiple times)
+
+ -f --from <addr>
+                Send from this address
+
+ -b --bcc <addr>
+                BCC address (may specify multiple times)
+
+ -c --cc <addr>
+                CC address (may specify multiple times)
+
+ -s --subject <subject>
+                Subject line for the email
+
+ -T --bodytsv <headers> <file>
+                Insert HTML table for <file>, where <file> is a tsv file 
+		(perhaps piped). Headers is a tab separated string. Headers
+		may be an empty string.
+
+ -H --bodyhtml <file>
+                Insert HTML string
+
+EOF
+	exit 2
+}
+
+header() {
+	cat <<EOF
+${HEADERS}Content-Type: text/html
+
+<html>
+EOF
+}
+
+footer() {
+	cat <<EOF
+$(echo blah)
+This report in <a href="<url>">SVN</a>
+<html>
+
+EOF
+}
+
+tsv_to_html() {
+	awk "-vHEADERS=$1" -F'\t' '
+BEGIN {
+	print "\n<table>\n"
+	if(HEADERS) {
+		gsub("\t", "</th><th>", HEADERS);
+		printf("\t<tr><th>%s</th></tr>\n", HEADERS);
+	}
+}
+!NF {next}
+{
+	printf "\t<tr>"
+	for(i = 1; i <= NF; i++) {
+		printf("<td>%s</td>", $i)
+	}
+	printf "</tr>\n"}
+END {
+	print "\n</table>\n"
+}
+'
+}
+
+while [[ "$#" -gt 0 ]]
+do
+	case $1 in
+		-d|--debug)
+			shift
+			DEBUG=1
+			;;
+		-t|--to)
+			shift
+			HEADERS="$HEADERS""To: $1"$'\n'
+			shift
+			;;
+		-f|--from)
+			shift
+			HEADERS="$HEADERS""From: $1"$'\n'
+			shift
+			;;
+		-b|--bcc)
+			shift
+			HEADERS="$HEADERS""BCC: $1"$'\n'
+			shift
+			;;
+		-c|--cc)
+			shift
+			HEADERS="$HEADERS""CC: $1"$'\n'
+			shift
+			;;
+		-s|--subject)
+			shift
+			HEADERS="$HEADERS""Subject: $1"$'\n'
+			shift
+			;;
+		-T|--bodytsv)
+			shift
+			tsv_to_html "$1" <"$2" >>"$BODYTMP"
+			shift
+			shift
+			;;
+		-H|--bodyhtml)
+			shift
+			echo "$1">>"$BODYTMP"
+			shift
+			;;
+		-h|--help)
+			do_help
+			;;
+		*)
+			do_help "Invalid option: $1"
+			;;
+	esac
+done
+
+header "$HEADERS" >> "$MAILTMP"
+cat "$BODYTMP" >> "$MAILTMP"
+footer >> "$MAILTMP"
+
+if [ 1 == "$DEBUG" ]
+then
+	echo "Will mail:"
+	cat "$MAILTMP"
+fi
