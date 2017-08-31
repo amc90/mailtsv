@@ -140,32 +140,32 @@ do
 			;;
 		-t|--to)
 			shift
-			HEADERS="$HEADERS""To: $1"$'\n'
+			[ "$TO" ] && TO="$TO,"
+			TO="$TO$1"
 			shift
 			;;
 		-f|--from)
 			shift
-			if [ "$FROM" ]
-			then
-				do_help "Only one --from argument allowed!"
-			fi
-			HEADERS="$HEADERS""From: $1"$'\n'
+			[ "$FROM" ] && do_help "Only one --from argument allowed!"
 			FROM="$1"
 			shift
 			;;
 		-b|--bcc)
 			shift
-			HEADERS="$HEADERS""BCC: $1"$'\n'
+			[ "$BCC" ] && BCC="$BCC,"
+			BCC="$BCC$1"
 			shift
 			;;
 		-c|--cc)
 			shift
-			HEADERS="$HEADERS""CC: $1"$'\n'
+			[ "$CC" ] && CC="$CC,"
+			CC="$CC$1"
 			shift
 			;;
 		-s|--subject)
 			shift
-			HEADERS="$HEADERS""Subject: $1"$'\n'
+			[ "$SUBJECT" ] && do_help "Only one --subject argument allowed!"
+			SUBJECT="$1"
 			shift
 			;;
 		-T|--bodytsv)
@@ -187,6 +187,12 @@ do
 			;;
 	esac
 done
+
+[ "$TO" ] && HEADERS="${HEADERS}To: $TO"$'\n'
+[ "$FROM" ] && HEADERS="${HEADERS}From: $FROM"$'\n'
+[ "$BCC" ] && HEADERS="${HEADERS}BCC: $BCC"$'\n'
+[ "$CC" ] && HEADERS="${HEADERS}CC: $CC"$'\n'
+[ "$SUBJECT" ] && HEADERS="${HEADERS}Subject: $SUBJECT"$'\n'
 
 if [ ! "$FROM" ]
 then
