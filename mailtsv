@@ -30,6 +30,9 @@ Valid options:
  -d --debug
                 Print debugging information
 
+ -n --no-op
+                Don't actually send mail
+
  -t --to <addr>
                 Send to this address (may specify multiple times)
 
@@ -62,14 +65,38 @@ header() {
 ${HEADERS}Content-Type: text/html
 
 <html>
+<style type="text/css">
+	table{
+		font-family: verdana,arial,sans-serif;
+		font-size:11px;
+		color:#333333;
+		border-width: 1px;
+		border-color: #666666;
+		border-collapse: collapse;
+	}
+	table th {
+		border-width: 1px;
+		padding: 8px;
+		border-style: solid;
+		border-color: #666666;
+		background-color: #dedede;
+	}
+	table td {
+		border-width: 1px;
+		padding: 8px;
+		border-style: solid;
+		border-color: #666666;
+		background-color: #ffffff;
+	}
+</style>
 EOF
 }
 
 footer() {
 	cat <<EOF
-$(echo blah)
-This report in <a href="<url>">SVN</a>
-<html>
+<hr/>
+This is an automated report. Please contact $FROM with any queries or unsubscribe requests.
+</html>
 
 EOF
 }
@@ -87,7 +114,11 @@ BEGIN {
 {
 	printf "\t<tr>"
 	for(i = 1; i <= NF; i++) {
-		printf("<td>%s</td>", $i)
+		align=""
+		if($i ~ /^ *[0-9]+(.[0-9]+)? *$/) {
+			align=" align=\"right\"";
+		}
+		printf("<td" align ">%s</td>", $i)
 	}
 	printf "</tr>\n"}
 END {
@@ -103,6 +134,10 @@ do
 			shift
 			DEBUG=1
 			;;
+		-n|--no-op)
+			shift
+			NOOP=1
+			;;
 		-t|--to)
 			shift
 			HEADERS="$HEADERS""To: $1"$'\n'
@@ -110,7 +145,12 @@ do
 			;;
 		-f|--from)
 			shift
+			if [ "$FROM" ]
+			then
+				do_help "Only one --from argument allowed!"
+			fi
 			HEADERS="$HEADERS""From: $1"$'\n'
+			FROM="$1"
 			shift
 			;;
 		-b|--bcc)
@@ -148,6 +188,11 @@ do
 	esac
 done
 
+if [ ! "$FROM" ]
+then
+	do_help "--from argument required!"
+fi
+
 header "$HEADERS" >> "$MAILTMP"
 cat "$BODYTMP" >> "$MAILTMP"
 footer >> "$MAILTMP"
@@ -157,3 +202,6 @@ then
 	echo "Will mail:"
 	cat "$MAILTMP"
 fi
+
+test 1 != "$NOOP" && /usr/lib/sendmail -t < "$MAILTMP"
+
