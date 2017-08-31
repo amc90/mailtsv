@@ -176,7 +176,7 @@ do
 			;;
 		-H|--bodyhtml)
 			shift
-			echo "$1">>"$BODYTMP"
+			echo "<div>$1</div>">>"$BODYTMP"
 			shift
 			;;
 		-h|--help)
