@@ -73,6 +73,7 @@ ${HEADERS}Content-Type: text/html
 		border-width: 1px;
 		border-color: #666666;
 		border-collapse: collapse;
+		margin: 5px;
 	}
 	table th {
 		border-width: 1px;
